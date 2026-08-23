@@ -1,26 +1,27 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
-from typing import List
+﻿from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from backend.app.routers import placement_router
+import uvicorn
 
-app = FastAPI(title="Placement Management Portal API")
+app = FastAPI(
+    title="Placement Management Portal API",
+    description="Automated student placement drive processing and interview scheduling pipeline.",
+    version="1.0.0"
+)
 
-class StudentApplication(BaseModel):
-    student_name: str
-    company_name: str
-    role: str
-    cgpa: float
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-applications_db = []
+app.include_router(placement_router.router)
 
-@app.post("/api/applications", response_model=StudentApplication)
-def create_application(application: StudentApplication):
-    applications_db.append(application)
-    return application
+@app.get("/health")
+async def health():
+    return {"status": "healthy", "service": "placement-management-portal"}
 
-@app.get("/api/applications", response_model=List[StudentApplication])
-def get_applications():
-    return applications_db
-
-@app.get("/")
-def read_root():
-    return {"message": "Placement Management Portal Backend is running successfully!"}
+if __name__ == "__main__":
+    uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)

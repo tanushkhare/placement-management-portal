@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Placement Management Portal</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="navbar">
+    <div class="nav-container">
+      <div class="logo">⚡ Placement Management Portal</div>
+      <div class="badge">Live Microservice Active</div>
+    </div>
+  </header>
+
+  <main class="main-layout">
+    <!-- Left Column: Student Application Ingestion -->
+    <section class="panel-left">
+      <h2>Placement Drive Candidate Application</h2>
+      <p class="subtitle">Automated recruitment criteria matching, CGPA cutoff verification, and interview pipeline routing.</p>
+
+      <div class="metric-row">
+        <div style="flex: 1.2;">
+          <label style="font-size: 0.85rem; color: #94a3b8;">Student Full Name</label>
+          <input type="text" id="studentName" class="text-input" value="Tanush Khare">
+        </div>
+        <div style="flex: 0.8;">
+          <label style="font-size: 0.85rem; color: #94a3b8;">Roll / Student ID</label>
+          <input type="text" id="studentId" class="text-input" value="CS2026_904">
+        </div>
+      </div>
+
+      <div class="metric-row">
+        <div style="flex: 1;">
+          <label style="font-size: 0.85rem; color: #94a3b8;">CGPA (Scale of 10)</label>
+          <input type="number" step="0.1" id="studentCgpa" class="text-input" value="8.6">
+        </div>
+        <div style="flex: 1;">
+          <label style="font-size: 0.85rem; color: #94a3b8;">Target Recruitment Track</label>
+          <select id="targetRole" class="text-input">
+            <option value="Software Engineer - Backend" selected>Software Engineer - Backend</option>
+            <option value="AI / ML Systems Engineer">AI / ML Systems Engineer</option>
+            <option value="Cloud Platform Engineer">Cloud Platform Engineer</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label for="skillsInput">Verified Technical Skills (Comma-separated)</label>
+        <input type="text" id="skillsInput" class="text-input" value="Python, FastAPI, Docker, SQL, AWS, Data Structures">
+      </div>
+
+      <button class="btn primary-btn" onclick="evaluateApplication()">Evaluate Placement Eligibility</button>
+
+      <div class="log-card">
+        <h4>Recruitment Engine Telemetry</h4>
+        <div id="logBox" class="terminal-log">Awaiting candidate application submission...</div>
+      </div>
+    </section>
+
+    <!-- Right Column: Eligibility & Interview Diagnostics -->
+    <aside class="panel-right">
+      <h2>Placement Evaluation Verdict</h2>
+
+      <div class="metric-row">
+        <div class="metric-card">
+          <span class="label">Profile Match</span>
+          <span class="value" id="matchScore">--%</span>
+        </div>
+        <div class="metric-card">
+          <span class="label">Eligibility State</span>
+          <span class="value" id="eligibilityState" style="color: #34d399;">--</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Interview Pipeline Status</h3>
+        <p id="shortlistLabel" style="font-size: 1.05rem; font-weight: 700; color: #38bdf8; margin: 0.4rem 0;">Awaiting evaluation...</p>
+        <small id="scheduledRound" style="color: #94a3b8;">Submit application to schedule technical round.</small>
+      </div>
+
+      <div class="card">
+        <h3>Criteria & Skill Alignment</h3>
+        <ul id="feedbackList">
+          <li>Enter candidate metrics to evaluate recruitment criteria.</li>
+        </ul>
+      </div>
+    </aside>
+  </main>
+
+  <script>
+    async function evaluateApplication() {
+      const name = document.getElementById('studentName').value.trim();
+      const id = document.getElementById('studentId').value.trim();
+      const cgpa = parseFloat(document.getElementById('studentCgpa').value);
+      const role = document.getElementById('targetRole').value;
+      const skills = document.getElementById('skillsInput').value.split(',').map(s => s.trim()).filter(Boolean);
+      const log = document.getElementById('logBox');
+
+      if (!name || !id || isNaN(cgpa)) {
+        alert("Please provide valid student details and CGPA.");
+        return;
+      }
+
+      log.innerText = `[${new Date().toLocaleTimeString()}] Submitting candidate '${name}' (${id})\n[${new Date().toLocaleTimeString()}] Querying endpoint: /api/v1/placement/evaluate...`;
+
+      const payload = {
+        student_name: name,
+        student_id: id,
+        cgpa: cgpa,
+        target_role: role,
+        skills: skills
+      };
+
+      try {
+        const res = await fetch("http://127.0.0.1:8000/api/v1/placement/evaluate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) throw new Error(`HTTP Error ${res.status}`);
+
+        const data = await res.json();
+        const isShortlisted = data.shortlist_status.includes("SHORTLISTED");
+
+        document.getElementById('matchScore').innerText = `${data.match_score}%`;
+        document.getElementById('eligibilityState').innerText = data.eligibility_status;
+        document.getElementById('eligibilityState').style.color = data.eligibility_status === "ELIGIBLE" ? "#34d399" : "#f87171";
+
+        document.getElementById('shortlistLabel').innerText = data.shortlist_status;
+        document.getElementById('shortlistLabel').style.color = isShortlisted ? "#34d399" : "#f87171";
+        document.getElementById('scheduledRound').innerText = `Round: ${data.scheduled_round} (Ref: ${data.application_id})`;
+
+        document.getElementById('feedbackList').innerHTML = data.criteria_feedback
+          .map(f => `<li>${f}</li>`).join('');
+
+        log.innerText += `\n[${new Date().toLocaleTimeString()}] 200 OK: Evaluation complete. Application Ref: ${data.application_id}`;
+      } catch (err) {
+        log.innerText += `\n[${new Date().toLocaleTimeString()}] Note: Backend server offline. Running local client simulation.\nDetails: ${err.message}`;
+
+        const isEligible = cgpa >= 7.5;
+        const match = Math.min(Math.round((cgpa / 10 * 50) + (skills.length * 8)), 96);
+        const shortlisted = isEligible && match >= 65;
+
+        document.getElementById('matchScore').innerText = `${match}%`;
+        document.getElementById('eligibilityState').innerText = isEligible ? "ELIGIBLE" : "INELIGIBLE";
+        document.getElementById('eligibilityState').style.color = isEligible ? "#34d399" : "#f87171";
+
+        document.getElementById('shortlistLabel').innerText = shortlisted ? "SHORTLISTED FOR INTERVIEW" : "NOT SHORTLISTED";
+        document.getElementById('shortlistLabel').style.color = shortlisted ? "#34d399" : "#f87171";
+        document.getElementById('scheduledRound').innerText = shortlisted ? "Round: Technical Assessment & System Design" : "Profile On Hold";
+
+        document.getElementById('feedbackList').innerHTML = `
+          <li>${isEligible ? `Academic benchmark satisfied (CGPA ${cgpa} >= 7.5)` : `CGPA ${cgpa} is below 7.5 benchmark`}</li>
+          <li>Skills assessed: ${skills.join(', ')}</li>
+        `;
+      }
+    }
+  </script>
+</body>
+</html>
