@@ -4,8 +4,8 @@ from backend.app.routers import placement_router
 import uvicorn
 
 app = FastAPI(
-    title="Placement Management Portal API",
-    description="Automated student placement drive processing and interview scheduling pipeline.",
+    title="Placement Management & Student Career Portal API",
+    description="Student registry, eligibility screening, and enterprise recruitment tracking backend.",
     version="1.0.0"
 )
 
@@ -20,7 +20,7 @@ app.add_middleware(
 app.include_router(placement_router.router)
 
 @app.get("/health")
-async def health():
+async def health_check():
     return {"status": "healthy", "service": "placement-management-portal"}
 
 if __name__ == "__main__":
