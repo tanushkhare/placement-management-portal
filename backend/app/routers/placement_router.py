@@ -1,5 +1,5 @@
 ﻿from fastapi import APIRouter, HTTPException
-from typing import List, Dict, Any
+from typing import List
 from backend.app.schemas.placement_schema import StudentRegistration, JobApplicationRequest, ApplicationRecord
 from backend.app.services.placement_service import placement_engine
 

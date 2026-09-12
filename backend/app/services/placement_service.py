@@ -40,7 +40,6 @@ class PlacementManagementEngine:
         is_eligible = student["cgpa"] >= cutoff
         status = "SHORTLISTED_FOR_INTERVIEW" if is_eligible else "CGPA_CRITERIA_UNMET"
         
-        # Skill-match evaluation
         core_keywords = ["Python", "FastAPI", "Distributed Systems", "SQL", "Docker", "Machine Learning"]
         matched_skills = [s for s in student["primary_skills"] if s in core_keywords]
         match_pct = round((len(matched_skills) / len(core_keywords)) * 100, 1)
